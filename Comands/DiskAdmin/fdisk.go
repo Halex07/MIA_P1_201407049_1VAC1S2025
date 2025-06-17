@@ -11,7 +11,7 @@ import (
 )
 
 func Fdisk(parametros []string) {
-	fmt.Println("FDISK")
+	fmt.Println(">> Ejecutando Comando FDISK")
 
 	var (
 		size       int
@@ -213,7 +213,7 @@ func Fdisk(parametros []string) {
 				var newPart Structs.Partition
 				if (typee == "P" || isPartExtend) && isName {
 					sizeMBR := int32(binary.Size(mbr))
-					mbr, newPart = primerAjuste(mbr, typee, sizeMBR, int32(sizeNewPart), name, fit)
+					mbr, newPart = fstAJ(mbr, typee, sizeMBR, int32(sizeNewPart), name, fit)
 					guardar = newPart.Size != 0
 					if guardar {
 						if err := Herramientas.WrObj(disco, mbr, 0); err != nil {
@@ -250,7 +250,7 @@ func Fdisk(parametros []string) {
 						fmt.Println("Error no existe la partición extendida")
 					}
 					if partExtend.Size != 0 {
-						primerAjusteLogicas(disco, partExtend, int32(sizeNewPart), name, fit)
+						fstAJLogicas(disco, partExtend, int32(sizeNewPart), name, fit)
 					}
 				}
 			} else if opc == 1 {
@@ -570,8 +570,7 @@ func Fdisk(parametros []string) {
 	}
 }
 
-// ACA
-func primerAjuste(mbr Structs.MBR, typee string, sizeMBR int32, sizeNewPart int32, name string, fit string) (Structs.MBR, Structs.Partition) {
+func fstAJ(mbr Structs.MBR, typee string, sizeMBR int32, sizeNewPart int32, name string, fit string) (Structs.MBR, Structs.Partition) {
 	var newPart Structs.Partition
 	var noPart Structs.Partition
 	if mbr.Partitions[0].Size == 0 {
@@ -838,7 +837,7 @@ func primerAjuste(mbr Structs.MBR, typee string, sizeMBR int32, sizeNewPart int3
 	return mbr, newPart
 }
 
-func primerAjusteLogicas(disco *os.File, partExtend Structs.Partition, sizeNewPart int32, name string, fit string) {
+func fstAJLogicas(disco *os.File, partExtend Structs.Partition, sizeNewPart int32, name string, fit string) {
 	save := true
 	var actual Structs.EBR
 	sizeEBR := int32(binary.Size(actual))
