@@ -1,76 +1,86 @@
 package Comandos
 
 import (
-	Herramientas "MIA_P1_201407049/Analisis"
-	"MIA_P1_201407049/Structs"
 	"fmt"
 	"strings"
+
+	Herramientas "MIA_P1_201407049/Analisis"
+	"MIA_P1_201407049/Structs"
 )
 
 func Unmount(parametros []string) {
-	fmt.Println(">>Ejecutando Comando UNMOUNT")
-	var id string
-	paramOk := true
-	temp2 := strings.TrimRight(parametros[1], " ")
-	temp := strings.Split(temp2, "=")
+	fmt.Println(">> Ejecutando Comando UNMOUNT")
 
-	if len(temp) != 2 {
-		fmt.Println("Error valor de parametro ", temp[0], " no reconocido")
-		paramOk = false
+	if len(parametros) < 2 {
+		fmt.Println("Error: Parámetro insuficiente.")
 		return
 	}
 
-	if strings.ToLower(temp[0]) == "id" {
-		id = strings.ToUpper(temp[1])
-	} else {
-		fmt.Println("Error parametro ", temp[0], "no reconocido")
-		paramOk = false
+	// Procesar parámetro id
+	param := strings.TrimSpace(parametros[1])
+	parts := strings.SplitN(param, "=", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "id") {
+		fmt.Printf("Error: Parámetro inválido -> %s\n", param)
+		return
 	}
-	if paramOk {
-		disk := id[0:1]
-		folder := "./MIA/P1/"
-		ext := ".dsk"
-		dirDisk := folder + disk + ext
-		disco, err := Herramientas.OpenFile(dirDisk)
-		if err != nil {
-			return
-		}
+	id := strings.ToUpper(strings.TrimSpace(parts[1]))
+	if len(id) < 1 {
+		fmt.Println("Error: ID vacío.")
+		return
+	}
 
-		var mbr Structs.MBR
-		if err := Herramientas.ReadObj(disco, &mbr, 0); err != nil {
-			return
-		}
+	// Ruta del disco
+	diskLetter := id[0:1]
+	diskPath := fmt.Sprintf("./MIA/P1/%s.dsk", diskLetter)
+	disco, err := Herramientas.OpenFile(diskPath)
+	if err != nil {
+		fmt.Println("Error: No se pudo abrir el disco:", err)
+		return
+	}
+	defer disco.Close()
 
-		defer disco.Close()
+	var mbr Structs.MBR
+	if err := Herramientas.ReadObj(disco, &mbr, 0); err != nil {
+		fmt.Println("Error: No se pudo leer el MBR:", err)
+		return
+	}
 
-		unmount := true
-		for i := 0; i < 4; i++ {
-			identificador := Structs.GETID(string(mbr.Partitions[i].Id[:]))
-			if identificador == id {
-				unmount = false
-				name := Structs.GETNOM(string(mbr.Partitions[i].Name[:]))
-				var unmount Structs.Partition
-				mbr.Partitions[i].Id = unmount.Id
-				copy(mbr.Partitions[i].Status[:], "I")
-				if err := Herramientas.WrObj(disco, mbr, 0); err != nil {
-					return
-				}
-				fmt.Println("La partición", name, " ha sido desmontada de manera exitosa")
-				break
+	encontrada := false
+	for i := 0; i < 4; i++ {
+		identificador := Structs.GETID(string(mbr.Partitions[i].Id[:]))
+		if identificador == id {
+			encontrada = true
+			name := Structs.GETNOM(string(mbr.Partitions[i].Name[:]))
+			mbr.Partitions[i].Id = [16]byte{} // Limpiar ID
+			copy(mbr.Partitions[i].Status[:], "I")
+			if err := Herramientas.WrObj(disco, mbr, 0); err != nil {
+				fmt.Println("Error al escribir cambios en el disco:", err)
+				return
 			}
+			fmt.Println("Partición", name, "desmontada exitosamente.")
+			break
 		}
+	}
 
-		if unmount {
-			fmt.Println("Error al montar la partición ", id, "vuelva a intentar")
-			fmt.Println("UNMOUNT Error. No existe el id")
-		} else {
-			fmt.Println("\nLista de particiones montadas en el sistema\n ")
-			for i := 0; i < 4; i++ {
-				estado := string(mbr.Partitions[i].Status[:])
-				if estado == "A" {
-					fmt.Printf("Partition %d: name: %s, status: %s, id: %s, tipo: %s, start: %d, size: %d, fit: %s, correlativo: %d\n", i, string(mbr.Partitions[i].Name[:]), string(mbr.Partitions[i].Status[:]), string(mbr.Partitions[i].Id[:]), string(mbr.Partitions[i].Type[:]), mbr.Partitions[i].Start, mbr.Partitions[i].Size, string(mbr.Partitions[i].Fit[:]), mbr.Partitions[i].Correlativo)
-				}
-			}
+	if !encontrada {
+		fmt.Printf("UNMOUNT Error: No se encontró la partición con ID '%s'\n", id)
+		return
+	}
+
+	fmt.Println("\nLista de particiones montadas:")
+	for i, part := range mbr.Partitions {
+		if string(part.Status[:]) == "A" {
+			fmt.Printf("Partition %d: name: %s, status: %s, id: %s, tipo: %s, start: %d, size: %d, fit: %s, correlativo: %d\n",
+				i,
+				Structs.GETNOM(string(part.Name[:])),
+				string(part.Status[:]),
+				string(part.Id[:]),
+				string(part.Type[:]),
+				part.Start,
+				part.Size,
+				string(part.Fit[:]),
+				part.Correlativo,
+			)
 		}
 	}
 }
