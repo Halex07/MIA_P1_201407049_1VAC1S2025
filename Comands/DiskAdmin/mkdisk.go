@@ -12,11 +12,13 @@ import (
 
 func Mkdisk(parametros []string) {
 	fmt.Println(">> Ejecutando Comando MKDISK")
-	var size int
-	fit := "F"
-	unit := 1048576
-	paramOk := true
-	sizeInit := false
+	var (
+		size     int
+		fit      string = "F"
+		unit     int    = 1048576
+		paramOk  bool   = true
+		sizeInit bool   = false
+	)
 	for _, raw := range parametros[1:] {
 		temp2 := strings.TrimRight(raw, " ")
 		temp := strings.Split(temp2, "=")

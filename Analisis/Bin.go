@@ -3,7 +3,6 @@ package Herramientas
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -56,32 +55,29 @@ func ReadObj(file *os.File, data interface{}, position int64) error {
 	return nil
 }
 
-func ReportGraphizMBR(path string, contenido string, nombre string) error {
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		fmt.Println("Error creando reporte path: ", err)
-		return err
-	}
-	file, err := os.Create(path)
+func ReportGraphizMBR(ruta string, contenido string, nombre string) {
+	// Escribimos el archivo .dot
+	err := os.WriteFile(ruta, []byte(contenido), 0644)
 	if err != nil {
-		fmt.Println("Error en la creación del archivo: ", err)
-		return err
+		fmt.Println("Error al escribir archivo .dot:", err)
+		return
 	}
-	defer file.Close()
-	_, err = file.WriteString(contenido)
-	if err != nil {
-		fmt.Println("Error al escribir en el archivo:", err)
-		return err
-	}
+	fmt.Println("Archivo .dot generado en:", ruta)
 
-	rep2 := dir + "/" + nombre + ".png"
-	cmd := exec.Command("dot", "-Tpng", path, "-o", rep2)
+	// Ruta al archivo PNG de salida
+	rutaPNG := filepath.Join(filepath.Dir(ruta), nombre+".png")
+
+	// Ejecutamos el comando dot -Tpng input.dot -o output.png
+	cmd := exec.Command("dot", "-Tpng", ruta, "-o", rutaPNG)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
 	err = cmd.Run()
 	if err != nil {
-		log.Fatalf("Error generando el reporte PNG: %v", err)
+		fmt.Println("Error al generar imagen PNG:", err)
+		return
 	}
 
-	return err
+	fmt.Println("Imagen PNG generada en:", rutaPNG)
 }
 
 func Reporte(path string, contenido string) error {
